@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm*)",
+      "Bash(cd*&&*pnpm*)",
+      "Bash(export PATH*&&*pnpm*)",
+      "Bash(powershell*)",
+      "Bash(cmd /c*)",
+      "Bash(curl*)",
+      "Bash(nvm*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -q 'schema\\.prisma' && echo '{\"systemMessage\": \"Schema changed - remember to run /db-push after this edit to push changes and regenerate the Prisma client.\"}' || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"Session ended. Consider updating memory files if new patterns, bugs, or features were discovered.\"}'"
+          }
+        ]
+      }
+    ]
+  }
+}
