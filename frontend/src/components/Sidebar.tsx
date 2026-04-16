@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Brain, Bell, LogOut, ChevronRight, Activity, Shield, CalendarDays, CalendarClock } from 'lucide-react';
+import { LayoutDashboard, Users, Brain, Bell, LogOut, ChevronRight, Activity, Shield, CalendarDays, CalendarClock, Video } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/alerts', icon: Bell, label: 'Alerts', roles: null },
   { to: '/appointments', icon: CalendarDays, label: 'Appointments', roles: null },
   { to: '/my-schedule', icon: CalendarClock, label: 'My Schedule', roles: ['DOCTOR'] },
+  { to: '/video-calls', icon: Video, label: 'Video Calls', roles: ['DOCTOR'] },
   { to: '/admin', icon: Shield, label: 'Admin', roles: ['ADMIN'] },
 ];
 

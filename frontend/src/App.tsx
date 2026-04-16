@@ -14,6 +14,8 @@ import RegisterPatientPage from './pages/RegisterPatientPage';
 import AdminPage from './pages/AdminPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import MySchedulePage from './pages/MySchedulePage';
+import VideoCallsPage from './pages/VideoCallsPage';
+import VideoCallPage from './pages/VideoCallPage';
 import PortalDashboard from './pages/portal/PortalDashboard';
 import PortalAppointments from './pages/portal/PortalAppointments';
 import PortalMedications from './pages/portal/PortalMedications';
@@ -27,6 +29,16 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+
+          {/* Full-screen video call room — no sidebar, accessible to both staff and patients */}
+          <Route
+            path="/call/:id"
+            element={
+              <ProtectedRoute>
+                <VideoCallPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Staff app */}
           <Route
@@ -46,6 +58,7 @@ export default function App() {
             <Route path="admin" element={<AdminPage />} />
             <Route path="appointments" element={<AppointmentsPage />} />
             <Route path="my-schedule" element={<MySchedulePage />} />
+            <Route path="video-calls" element={<VideoCallsPage />} />
           </Route>
 
           {/* Patient portal */}
@@ -62,6 +75,7 @@ export default function App() {
             <Route path="medications" element={<PortalMedications />} />
             <Route path="results" element={<PortalResults />} />
             <Route path="profile" element={<PortalProfile />} />
+            <Route path="video-calls" element={<VideoCallsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

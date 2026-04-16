@@ -25,6 +25,7 @@ model User {
   createdAppointments Appointment[] @relation("CreatedAppointments")
   availability        DoctorAvailability?
   blockedDates        DoctorBlock[]
+  videoCalls          VideoCall[]   @relation("DoctorCalls")
 }
 
 model DoctorAvailability {
@@ -74,6 +75,7 @@ model Patient {
   riskScores         RiskScore[]
   alerts             Alert[]
   appointments       Appointment[]
+  videoCalls         VideoCall[]
   user               User?
 }
 
@@ -243,4 +245,22 @@ model Appointment {
   completionNotes String?           // post-visit summary
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model VideoCall {
+  id          String    @id @default(uuid())
+  doctorId    String
+  patientId   String
+  status      String    // scheduled | active | completed | cancelled
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  duration    Int?                // seconds
+  callNotes   String?             // post-call doctor notes
+  roomToken   String    @unique   // short-lived JWT for room access
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  doctor  User    @relation("DoctorCalls",  fields: [doctorId],  references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
 }

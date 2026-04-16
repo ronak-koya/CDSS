@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Brain, Phone, Mail, MapPin, User, Droplets, AlertTriangle, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Brain, Phone, Mail, MapPin, User, Droplets, AlertTriangle, Loader2, CheckCircle, Video } from 'lucide-react';
 import api from '../lib/api';
 import { Patient } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { format, differenceInYears } from 'date-fns';
 import OverviewTab from '../components/patient/OverviewTab';
 import VitalsTab from '../components/patient/VitalsTab';
@@ -18,6 +19,20 @@ export default function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'DOCTOR';
+  const [startingCall, setStartingCall] = useState(false);
+
+  const handleStartCall = async () => {
+    if (!patient) return;
+    setStartingCall(true);
+    try {
+      const res = await api.post<{ id: string }>('/calls/start', { patientId: patient.id });
+      navigate(`/call/${res.data.id}`);
+    } catch {
+      setStartingCall(false);
+    }
+  };
   const locationState = location.state as { registered?: boolean; activeTab?: string } | null;
   const justRegistered = locationState?.registered === true;
   const initialTab = locationState?.activeTab;
@@ -122,6 +137,16 @@ export default function PatientProfilePage() {
                     <p key={a.id} className="text-xs text-red-600">{a.allergen}</p>
                   ))}
                 </div>
+              )}
+              {isDoctor && (
+                <button
+                  onClick={handleStartCall}
+                  disabled={startingCall}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-all"
+                >
+                  {startingCall ? <Loader2 size={16} className="animate-spin" /> : <Video size={16} />}
+                  {startingCall ? 'Starting…' : 'Start Video Call'}
+                </button>
               )}
               <button
                 onClick={() => navigate(`/diagnosis?patientId=${patient.id}`)}
