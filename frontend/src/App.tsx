@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LogoProvider } from './contexts/LogoContext';
 import ProtectedRoute, { PatientPortalRoute } from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import PortalLayout from './components/PortalLayout';
@@ -25,6 +26,7 @@ import PortalProfile from './pages/portal/PortalProfile';
 export default function App() {
   return (
     <ThemeProvider>
+    <LogoProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -82,6 +84,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </LogoProvider>
     </ThemeProvider>
   );
 }

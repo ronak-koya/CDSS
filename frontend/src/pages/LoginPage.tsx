@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Loader2, Brain, Bell, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLogoSrc } from '../contexts/LogoContext';
 
 const demoAccounts = [
   { role: 'Doctor',  email: 'dr.smith@cdss.com',           color: 'bg-blue-500' },
@@ -32,6 +33,7 @@ const features = [
 const BARS = [3,6,4,8,5,12,5,8,4,6,3,5,8,4,10,6,3,7,5,9,4,6,3,8,5,11,5,7,4,6,3,5,8,4,10,6,3,7];
 
 export default function LoginPage() {
+  const logoSrc = useLogoSrc();
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw]   = useState(false);
@@ -89,7 +91,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-3 mb-auto animate-fade-up" style={{ animationDelay: '0ms' }}>
             <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-lg shadow-primary-500/40 drop-shadow-[0_0_16px_rgba(249,115,22,0.5)] animate-float">
-              <img src="/logo.svg" alt="MedIntel" className="w-full h-full" />
+              <img src={logoSrc} alt="MedIntel" className="w-full h-full" />
             </div>
             <div>
               <p className="text-white font-display font-bold text-xl leading-none tracking-tight">MedIntel</p>
