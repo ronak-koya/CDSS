@@ -264,3 +264,10 @@ model VideoCall {
   doctor  User    @relation("DoctorCalls",  fields: [doctorId],  references: [id])
   patient Patient @relation(fields: [patientId], references: [id])
 }
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}

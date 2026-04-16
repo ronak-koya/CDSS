@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Brain, Bell, LogOut, ChevronRight, Activity, Shield, CalendarDays, CalendarClock, Video } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLogoSrc } from '../contexts/LogoContext';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', roles: null },
@@ -16,6 +17,7 @@ const navItems = [
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const logoSrc = useLogoSrc();
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const roleColor = { DOCTOR: 'bg-blue-500', NURSE: 'bg-green-500', ADMIN: 'bg-purple-500', STAFF: 'bg-gray-500' }[user?.role ?? 'STAFF'] ?? 'bg-gray-500';
@@ -25,7 +27,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-700">
         <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-primary-500/30 drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]">
-          <img src="/logo.svg" alt="MedIntel" className="w-full h-full" />
+          <img src={logoSrc} alt="MedIntel" className="w-full h-full" />
         </div>
         <div>
           <p className="text-white font-bold text-lg leading-none">MedIntel</p>

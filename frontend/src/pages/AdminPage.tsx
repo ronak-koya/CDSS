@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { Shield, UserPlus, Search, Stethoscope, Users, UserCheck, Loader2, MoreVertical, Pencil, Trash2, X, AlertCircle, CheckCircle, Eye, EyeOff, Palette, Check, Pill, Plus, ToggleLeft, ToggleRight, Filter } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Shield, UserPlus, Search, Stethoscope, Users, UserCheck, Loader2, MoreVertical, Pencil, Trash2, X, AlertCircle, CheckCircle, Eye, EyeOff, Palette, Check, Pill, Plus, ToggleLeft, ToggleRight, Filter, ImagePlus, Upload, Trash } from 'lucide-react';
 import api from '../lib/api';
 import { User, UserRole, AllergenMaster } from '../types';
+import { useLogo } from '../contexts/LogoContext';
 import { format } from 'date-fns';
 import { THEMES, useTheme } from '../contexts/ThemeContext';
 
@@ -708,9 +709,178 @@ function AllergenFormModal({
   );
 }
 
+// ─── BrandingTab ─────────────────────────────────────────────────────────────
+
+function BrandingTab() {
+  const { logoUrl, refreshLogo } = useLogo();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const ACCEPTED = ['image/png', 'image/jpeg', 'image/svg+xml'];
+  const MAX_MB = 2;
+
+  const showToast = (msg: string, isError = false) => {
+    if (isError) { setError(msg); setTimeout(() => setError(''), 4000); }
+    else { setSuccess(msg); setTimeout(() => setSuccess(''), 4000); }
+  };
+
+  const validate = useCallback((f: File): string | null => {
+    if (!ACCEPTED.includes(f.type)) return 'Only PNG, JPG, and SVG files are allowed.';
+    if (f.size > MAX_MB * 1024 * 1024) return `File must be under ${MAX_MB}MB.`;
+    return null;
+  }, []);
+
+  const handleFile = (f: File) => {
+    const err = validate(f);
+    if (err) { showToast(err, true); return; }
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setError('');
+  };
+
+  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) handleFile(f);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) handleFile(f);
+  };
+
+  const handleSave = async () => {
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      const form = new FormData();
+      form.append('logo', file);
+      await api.post('/admin/logo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      refreshLogo();
+      setFile(null);
+      setPreview(null);
+      showToast('Logo updated successfully!');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      showToast(msg || 'Upload failed. Please try again.', true);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCancel = () => { setFile(null); setPreview(null); setError(''); };
+
+  const handleDelete = async () => {
+    if (!logoUrl) return;
+    setDeleting(true);
+    try {
+      await api.delete('/admin/logo');
+      refreshLogo();
+      showToast('Logo reset to default.');
+    } catch {
+      showToast('Failed to remove logo.', true);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const activeLogo = preview ?? logoUrl ?? '/logo.svg';
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      {/* Toast messages */}
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+          <AlertCircle size={16} className="flex-shrink-0" /> {error}
+        </div>
+      )}
+      {success && (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm">
+          <CheckCircle size={16} className="flex-shrink-0" /> {success}
+        </div>
+      )}
+
+      {/* Current logo preview */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">Current Logo</h3>
+        <div className="flex items-center gap-6">
+          <div className="w-20 h-20 rounded-2xl bg-slate-900 flex items-center justify-center overflow-hidden shadow-lg flex-shrink-0">
+            <img src={activeLogo} alt="Logo preview" className="w-full h-full object-contain p-2" />
+          </div>
+          <div className="text-sm text-gray-500 space-y-1">
+            <p>{preview ? <span className="text-primary-600 font-medium">New logo ready to save</span> : logoUrl ? 'Custom logo active' : 'Using default logo'}</p>
+            <p className="text-xs text-gray-400">Shown in the sidebar and login screen</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Drop zone */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">Upload New Logo</h3>
+        <div
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => inputRef.current?.click()}
+          className={`relative flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl py-10 px-6 cursor-pointer transition-all
+            ${dragging ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'}`}
+        >
+          <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center">
+            <Upload size={22} className="text-primary-500" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-700">Drag & drop or <span className="text-primary-600">browse</span></p>
+            <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG — max {MAX_MB}MB</p>
+          </div>
+          <input ref={inputRef} type="file" accept=".png,.jpg,.jpeg,.svg" className="hidden" onChange={onInputChange} />
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        {file ? (
+          <>
+            <button
+              onClick={handleSave}
+              disabled={uploading}
+              className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all shadow-sm"
+            >
+              {uploading ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+              {uploading ? 'Saving…' : 'Save Logo'}
+            </button>
+            <button
+              onClick={handleCancel}
+              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg transition-all"
+            >
+              <X size={15} /> Cancel
+            </button>
+          </>
+        ) : logoUrl ? (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 bg-red-50 hover:bg-red-100 disabled:opacity-60 text-red-600 text-sm font-medium px-5 py-2.5 rounded-lg border border-red-200 transition-all"
+          >
+            {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash size={15} />}
+            {deleting ? 'Removing…' : 'Reset to Default'}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 // ─── AdminPage ────────────────────────────────────────────────────────────────
 
-type AdminTab = 'staff' | 'allergens' | 'settings';
+type AdminTab = 'staff' | 'allergens' | 'settings' | 'branding';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('staff');
@@ -842,6 +1012,14 @@ export default function AdminPage() {
         >
           <Palette size={15} /> Appearance
         </button>
+        <button
+          onClick={() => setActiveTab('branding')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'branding' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <ImagePlus size={15} /> Branding
+        </button>
       </div>
 
       {activeTab === 'staff' && (
@@ -938,6 +1116,7 @@ export default function AdminPage() {
 
       {activeTab === 'allergens' && <AllergenManagement />}
       {activeTab === 'settings' && <AppearanceSettings />}
+      {activeTab === 'branding' && <BrandingTab />}
     </div>
   );
 }

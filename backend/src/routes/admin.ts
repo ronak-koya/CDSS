@@ -1,9 +1,37 @@
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction, Request } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
-const router = Router();
+// ─── Multer config for logo uploads ──────────────────────────────────────────
+const LOGO_DIR = path.join(__dirname, '../../public/uploads/logo');
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/svg+xml'];
+const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, LOGO_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `logo_${Date.now()}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_SIZE_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PNG, JPG, and SVG files are allowed'));
+    }
+  },
+});
+
+const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
 
 // All admin routes require authentication + ADMIN role
@@ -276,6 +304,83 @@ router.delete('/allergens/:id', async (req: AuthRequest, res: Response): Promise
     res.status(204).end();
   } catch (err: any) {
     if (err?.code === 'P2025') { res.status(404).json({ error: 'Not found' }); return; }
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Logo / Branding ───────────────────────────────────────────────────────────
+
+// GET /api/admin/logo — return current logo URL (or null)
+router.get('/logo', async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const config = await prisma.systemConfig.findUnique({ where: { key: 'logoPath' } });
+    if (!config) { res.json({ logoUrl: null }); return; }
+    res.json({ logoUrl: `/uploads/logo/${path.basename(config.value)}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/admin/logo — upload new logo (replaces existing)
+router.post(
+  '/logo',
+  (req: Request, res: Response, next: NextFunction) => {
+    upload.single('logo')(req, res, (err: unknown) => {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({ error: 'File too large. Maximum size is 2MB.' });
+        return;
+      }
+      if (err instanceof Error) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      next();
+    });
+  },
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: 'No file uploaded' });
+        return;
+      }
+
+      // Delete previous logo file if one exists
+      const existing = await prisma.systemConfig.findUnique({ where: { key: 'logoPath' } });
+      if (existing && fs.existsSync(existing.value)) {
+        fs.unlinkSync(existing.value);
+      }
+
+      // Persist the new file path
+      await prisma.systemConfig.upsert({
+        where:  { key: 'logoPath' },
+        update: { value: req.file.path },
+        create: { key: 'logoPath', value: req.file.path },
+      });
+
+      res.status(201).json({
+        logoUrl: `/uploads/logo/${req.file.filename}`,
+        message: 'Logo uploaded successfully',
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// DELETE /api/admin/logo — remove logo and revert to default
+router.delete('/logo', async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const config = await prisma.systemConfig.findUnique({ where: { key: 'logoPath' } });
+    if (!config) { res.json({ message: 'No custom logo to remove' }); return; }
+
+    if (fs.existsSync(config.value)) fs.unlinkSync(config.value);
+    await prisma.systemConfig.delete({ where: { key: 'logoPath' } });
+
+    res.json({ message: 'Logo removed. Default logo is now active.' });
+  } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
